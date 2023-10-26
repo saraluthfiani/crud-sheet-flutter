@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_application/model/region.dart';
 import 'package:gsheets/gsheets.dart';
 
@@ -17,7 +16,7 @@ class RegionSheetsApi {
   "universe_domain": "googleapis.com"
 }
 ''';
-  static final _spreadsheetId = '1JIm-2QEJrRAU4X2715UkB4vchnw6ln23GojNc908k8Q';
+  static const _spreadsheetId = '1JIm-2QEJrRAU4X2715UkB4vchnw6ln23GojNc908k8Q';
   static final _gsheets = GSheets(_credentials);
   static Worksheet? _regionSheet;
 
@@ -42,5 +41,62 @@ class RegionSheetsApi {
     } catch (e) {
       return spreadsheet.worksheetByTitle(title)!;
     }
+  }
+
+  static Future<int> getRowCount() async {
+    if (_regionSheet == null) return 0;
+    final lastRow = await _regionSheet!.values.lastRow();
+    return lastRow == null ? 0 : int.tryParse(lastRow.first) ?? 0;
+  }
+
+  static Future<List<Region>> getAll() async {
+    if (_regionSheet == null) return <Region>[];
+
+    final regions = await _regionSheet!.values.map.allRows();
+    return regions == null ? <Region>[] : regions.map(Region.fromJson).toList();
+  }
+
+  static Future<Region?> getRegionById(int id) async {
+    if (_regionSheet == null) return null;
+    final json = await _regionSheet!.values.map.rowByKey(id, fromColumn: 1);
+    return json == null ? null : Region.fromJson(json);
+  }
+
+  static Future insert(List<Map<String, dynamic>> rowList) async {
+    if (_regionSheet == null) return;
+
+    _regionSheet!.values.map.appendRows(rowList);
+  }
+
+  static Future<bool> update(
+    int id,
+    Map<String, dynamic> region,
+  ) async {
+    if (_regionSheet == null) return false;
+    return _regionSheet!.values.map.insertRowByKey(id, region);
+  }
+
+  static Future<bool> updateCell({
+    required int id,
+    required String key,
+    required dynamic value,
+  }) async {
+    if (_regionSheet == null) return false;
+
+    return _regionSheet!.values.insertValueByKeys(
+      value,
+      columnKey: key,
+      rowKey: id,
+    );
+  }
+
+  static Future<bool> deleteById(int id) async {
+    if (_regionSheet == null) return false;
+
+    final index = await _regionSheet!.values.rowIndexOf(id);
+
+    if (index == -1) return false;
+
+    return _regionSheet!.deleteRow(index);
   }
 }
